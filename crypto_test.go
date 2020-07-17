@@ -1,10 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/hex"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,47 +10,29 @@ import (
 var debug_mode bool = true
 
 func TestEchoAPIHandler(t *testing.T) {
-	msg := []byte("hello")
-	block_size := 256
-	iv := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
-	key := []byte("1234567890123456")
-
-	aes := NewAES(key, iv)
-	block := make([]byte, block_size)
-	for i := range msg {
-		block[i] = msg[i]
+	msgs := []string{
+		"wlfs6EBTDd2tuafo7UcnWUmsbE+ypJrpldbk0FjXVGIIZ7GW4U/nmHiq/LX86mS8VvMMhzK5qmVEwfB/L9tESdLjTpX9bqzQ5miATr42HuIafrotNRqrL9bSzl5+L6Hy6CWoprt2iHtMjzPn3QvWKEHTRAulfnXJoiBJsaVncYB5d8V+F9E+NsU3Ebg44WUZLWbYu/ox1HgdZeaYXyZlDTZTeuzoznfVCPu2IV5pCy/7Iykp5EjjrH3w9mBojFgbqYxJY5YXtQPzWUIqwugFy4EzSs8OicF+rRwD6wVV3RgvOakHeBGSE0XvshafTohkHH69D4bhUb0JFYhXCAJNHQ==",
 	}
 
-	encrypted := aes.Enc(block)
-	encoded := base64.StdEncoding.EncodeToString(encrypted)
+	for _, msg := range msgs {
+		req, err := http.NewRequest("POST", "/enc/echo", strings.NewReader(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if debug_mode {
-		fmt.Printf("%s", hex.Dump(encrypted))
-		fmt.Println(encoded)
-	}
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(echoAPIHandler)
 
-	req, err := http.NewRequest("POST", "/enc/echo", strings.NewReader(encoded))
-	if err != nil {
-		t.Fatal(err)
-	}
+		handler.ServeHTTP(rr, req)
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(echoAPIHandler)
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got [%v] want [%v]", status, http.StatusOK)
+		}
 
-	handler.ServeHTTP(rr, req)
+		expected := msg
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got [%v] want [%v]", status, http.StatusOK)
-	}
-
-	decoded := make([]byte, block_size)
-	_, err = base64.StdEncoding.Decode(decoded, rr.Body.Bytes())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := block
-	if decrypted := aes.Dec(decoded); !bytes.Equal(decrypted, expected) {
-		t.Errorf("handler returned unexpected body: \ngot [%v] \nwant [%v]", decrypted, expected)
+		if body := rr.Body.String(); body != expected {
+			t.Errorf("handler returned unexpected body: \ngot [%v] \nwant [%v]", body, expected)
+		}
 	}
 }
