@@ -24,7 +24,7 @@ func main() {
   \   /  | )   ( || )  \  |___) (___| (____/\| (____/\| )   ( |
    \_/   |/     \||/    )_)\_______/(_______/(_______/|/     \|`)
 
-	http.HandleFunc("/enc/echo", crypto(echoAPIHandler))
+	http.HandleFunc("/enc/echo", CryptoHandler(echoAPIHandler))
 
 	const appDir = "./page"
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir(appDir))))
