@@ -2,9 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 )
+
+func echoAPIHandler(w http.ResponseWriter, r *http.Request) {
+	io.Copy(w, r.Body)
+}
 
 func main() {
 	/*
@@ -17,11 +22,9 @@ func main() {
 ( (   ) )|  ___  || (\ \) |   | |   | |      | |      |  ___  |
  \ \_/ / | (   ) || | \   |   | |   | |      | |      | (   ) |
   \   /  | )   ( || )  \  |___) (___| (____/\| (____/\| )   ( |
-   \_/   |/     \||/    )_)\_______/(_______/(_______/|/     \|
+   \_/   |/     \||/    )_)\_______/(_______/(_______/|/     \|`)
 
-`)
-
-	http.HandleFunc("/enc/echo", encEchoAPIHandler)
+	http.HandleFunc("/enc/echo", crypto(echoAPIHandler))
 
 	const appDir = "./page"
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir(appDir))))
