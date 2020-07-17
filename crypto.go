@@ -6,14 +6,10 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
-	"encoding/hex"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 )
-
-var debud_mode bool = true
 
 type AES struct {
 	enc cipher.Stream
@@ -36,6 +32,15 @@ func (a AES) Enc(enc_in []byte) []byte {
 	enc_out := make([]byte, len(enc_in))
 	a.enc.XORKeyStream(enc_out, enc_in)
 	return enc_out
+}
+
+func (a AES) DecReader(r io.Reader) io.Reader {
+	buf := new(bytes.Buffer)
+	io.Copy(buf, r)
+	dec_in := buf.Bytes()
+	dec_out := make([]byte, len(dec_in))
+	a.dec.XORKeyStream(dec_out, dec_in)
+	return bytes.NewReader(dec_out)
 }
 
 func (a AES) Dec(dec_in []byte) []byte {
@@ -67,26 +72,8 @@ func CryptoHandler(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		aes := NewAES(key, iv)
 
-		buf := make([]byte, 344)
-		_, err := r.Body.Read(buf)
-		if err != nil {
-			log.Print("read HTTP request body : ", err)
-		}
-
-		decoded := make([]byte, 256)
-		_, err = base64.StdEncoding.Decode(decoded, buf)
-		if err != nil {
-			log.Print("decode error:", err)
-			return
-		}
-		decrypted := aes.Dec(decoded)
-
-		if debud_mode {
-			fmt.Printf("decoded\n%s", hex.Dump(decoded))
-			fmt.Printf("decrypted\n%s", hex.Dump(decrypted))
-		}
-
-		r, err = http.NewRequest(r.Method, r.URL.String(), bytes.NewReader(decrypted))
+		decoder := base64.NewDecoder(base64.StdEncoding, r.Body)
+		r, err := http.NewRequest(r.Method, r.URL.String(), aes.DecReader(decoder))
 		if err != nil {
 			log.Print("new request error: ", err)
 			return
