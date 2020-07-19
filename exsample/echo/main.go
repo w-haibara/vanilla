@@ -11,11 +11,11 @@ import (
 )
 
 func echoAPIHandler(w http.ResponseWriter, r *http.Request) {
-	io.Copy(w, r.Body)
-
 	body := new(bytes.Buffer)
 	body.ReadFrom(r.Body)
-	fmt.Println("recv msg:", body)
+	fmt.Println("recv msg:", body.String())
+
+	io.Copy(w, r.Body)
 }
 
 func main() {
